@@ -25,7 +25,7 @@ CallstackWidget::CallstackWidget(QWidget* parent) : QDockWidget(parent) {
 
 void CallstackWidget::OnDebugModeEntered() {
     // Stack pointer
-    const u32 sp = Core::g_app_core->GetReg(13);
+    const u32 sp = Core::CPU().GetReg(13);
 
     Clear();
 
@@ -45,7 +45,6 @@ void CallstackWidget::OnDebugModeEntered() {
         if (ARM_Disasm::Decode(insn) == OP_BL) {
             std::string name;
             // ripped from disasm
-            u8 cond = (insn >> 28) & 0xf;
             u32 i_offset = insn & 0xffffff;
             // Sign-extend the 24-bit offset
             if ((i_offset >> 23) & 1)

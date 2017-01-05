@@ -1,5 +1,6 @@
 # CMake 3.2 required for cmake to know the right flags for CXX standard on OSX
 cmake_minimum_required(VERSION 3.2)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/CMakeModules)
 
 function(download_bundled_external remote_path lib_name prefix_var)
     set(prefix "${CMAKE_BINARY_DIR}/externals/${lib_name}")
@@ -183,8 +184,10 @@ IF (APPLE)
     FIND_LIBRARY(COCOA_LIBRARY Cocoa)           # Umbrella framework for everything GUI-related
     set(PLATFORM_LIBRARIES ${COCOA_LIBRARY} ${IOKIT_LIBRARY} ${COREVIDEO_LIBRARY})
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++")
+    if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++")
+    endif()
 ELSEIF (WIN32)
     # WSAPoll and SHGetKnownFolderPath (AppData/Roaming) didn't exist before WinNT 6.x (Vista)
     add_definitions(-D_WIN32_WINNT=0x0600 -DWINVER=0x0600)
@@ -250,9 +253,16 @@ get_git_head_revision(GIT_REF_SPEC GIT_REV)
 git_describe(GIT_DESC --always --long --dirty)
 git_branch_name(GIT_BRANCH)
 
+# configure the bintray travis release json
+string(TIMESTAMP BUILD_DATE "%Y-%m-%d")
+configure_file("${CMAKE_SOURCE_DIR}/.travis.descriptor.json.in" "${CMAKE_SOURCE_DIR}/.travis.descriptor.json" @ONLY)
+unset(BUILD_DATE)
+
 set(INI_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/externals/inih")
 include_directories(${INI_PREFIX})
 add_subdirectory(${INI_PREFIX})
+
+add_subdirectory(externals)
 
 option(DYNARMIC_TESTS OFF)
 add_subdirectory(externals/dynarmic)

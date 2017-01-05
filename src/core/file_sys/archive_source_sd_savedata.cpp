@@ -18,7 +18,7 @@ namespace {
 
 std::string GetSaveDataContainerPath(const std::string& sdmc_directory) {
     return Common::StringFromFormat("%sNintendo 3DS/%s/%s/title/", sdmc_directory.c_str(),
-                                    SYSTEM_ID.c_str(), SDCARD_ID.c_str());
+                                    SYSTEM_ID, SDCARD_ID);
 }
 
 std::string GetSaveDataPath(const std::string& mount_location, u64 program_id) {
@@ -88,6 +88,11 @@ ResultVal<ArchiveFormatInfo> ArchiveSource_SDSaveData::GetFormatInfo(u64 program
     ArchiveFormatInfo info = {};
     file.ReadBytes(&info, sizeof(info));
     return MakeResult<ArchiveFormatInfo>(info);
+}
+
+std::string ArchiveSource_SDSaveData::GetSaveDataPathFor(const std::string& mount_point,
+                                                         u64 program_id) {
+    return GetSaveDataPath(GetSaveDataContainerPath(mount_point), program_id);
 }
 
 } // namespace FileSys

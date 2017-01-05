@@ -59,7 +59,10 @@ static void WritePicaReg(u32 id, u32 value, u32 mask) {
 
     regs[id] = (old_value & ~write_mask) | (value & write_mask);
 
-    DebugUtils::OnPicaRegWrite({(u16)id, (u16)mask, regs[id]});
+    // Double check for is_pica_tracing to avoid call overhead
+    if (DebugUtils::IsPicaTracing()) {
+        DebugUtils::OnPicaRegWrite({(u16)id, (u16)mask, regs[id]});
+    }
 
     if (g_debug_context)
         g_debug_context->OnEvent(DebugContext::Event::PicaCommandLoaded,
@@ -136,9 +139,10 @@ static void WritePicaReg(u32 id, u32 value, u32 mask) {
                 immediate_input.attr[immediate_attribute_id++] = attribute;
 
                 if (immediate_attribute_id >= regs.vs.num_input_attributes + 1) {
+                    MICROPROFILE_SCOPE(GPU_Drawing);
                     immediate_attribute_id = 0;
 
-                    Shader::UnitState<false> shader_unit;
+                    Shader::UnitState shader_unit;
                     g_state.vs.Setup();
 
                     // Send to vertex shader
@@ -165,6 +169,8 @@ static void WritePicaReg(u32 id, u32 value, u32 mask) {
 
     case PICA_REG_INDEX(gpu_mode):
         if (regs.gpu_mode == Regs::GPUMode::Configuring) {
+            MICROPROFILE_SCOPE(GPU_Drawing);
+
             // Draw immediate mode triangles when GPU Mode is set to GPUMode::Configuring
             VideoCore::g_renderer->Rasterizer()->DrawTriangles();
 
@@ -237,7 +243,7 @@ static void WritePicaReg(u32 id, u32 value, u32 mask) {
         unsigned int vertex_cache_pos = 0;
         vertex_cache_ids.fill(-1);
 
-        Shader::UnitState<false> shader_unit;
+        Shader::UnitState shader_unit;
         g_state.vs.Setup();
 
         for (unsigned int index = 0; index < regs.num_vertices; ++index) {
@@ -251,7 +257,6 @@ static void WritePicaReg(u32 id, u32 value, u32 mask) {
             ASSERT(vertex != -1);
 
             bool vertex_cache_hit = false;
-            Shader::OutputRegisters output_registers;
 
             if (is_indexed) {
                 if (g_debug_context && Pica::g_debug_context->recorder) {
@@ -279,10 +284,9 @@ static void WritePicaReg(u32 id, u32 value, u32 mask) {
                     g_debug_context->OnEvent(DebugContext::Event::VertexShaderInvocation,
                                              (void*)&input);
                 g_state.vs.Run(shader_unit, input, loader.GetNumTotalAttributes());
-                output_registers = shader_unit.output_registers;
 
                 // Retrieve vertex from register data
-                output_vertex = output_registers.ToVertex(regs.vs);
+                output_vertex = shader_unit.output_registers.ToVertex(regs.vs);
 
                 if (is_indexed) {
                     vertex_cache[vertex_cache_pos] = output_vertex;

@@ -45,6 +45,7 @@ static Dynarmic::UserCallbacks GetUserCallbacks(ARMul_State* interpeter_state) {
     user_callbacks.user_arg = static_cast<void*>(interpeter_state);
     user_callbacks.CallSVC = &SVC::CallSVC;
     user_callbacks.IsReadOnlyMemory = &IsReadOnlyMemory;
+    user_callbacks.MemoryReadCode = &Memory::Read32;
     user_callbacks.MemoryRead8 = &Memory::Read8;
     user_callbacks.MemoryRead16 = &Memory::Read16;
     user_callbacks.MemoryRead32 = &Memory::Read32;
@@ -137,7 +138,7 @@ void ARM_Dynarmic::ExecuteInstructions(int num_instructions) {
     AddTicks(ticks_executed);
 }
 
-void ARM_Dynarmic::SaveContext(Core::ThreadContext& ctx) {
+void ARM_Dynarmic::SaveContext(ARM_Interface::ThreadContext& ctx) {
     memcpy(ctx.cpu_registers, jit->Regs().data(), sizeof(ctx.cpu_registers));
     memcpy(ctx.fpu_registers, jit->ExtRegs().data(), sizeof(ctx.fpu_registers));
 
@@ -150,7 +151,7 @@ void ARM_Dynarmic::SaveContext(Core::ThreadContext& ctx) {
     ctx.fpexc = interpreter_state->VFP[VFP_FPEXC];
 }
 
-void ARM_Dynarmic::LoadContext(const Core::ThreadContext& ctx) {
+void ARM_Dynarmic::LoadContext(const ARM_Interface::ThreadContext& ctx) {
     memcpy(jit->Regs().data(), ctx.cpu_registers, sizeof(ctx.cpu_registers));
     memcpy(jit->ExtRegs().data(), ctx.fpu_registers, sizeof(ctx.fpu_registers));
 

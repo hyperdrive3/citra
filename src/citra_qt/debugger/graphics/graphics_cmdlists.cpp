@@ -13,7 +13,7 @@
 #include <QSpinBox>
 #include <QTreeView>
 #include <QVBoxLayout>
-#include "citra_qt/debugger/graphics_cmdlists.h"
+#include "citra_qt/debugger/graphics/graphics_cmdlists.h"
 #include "citra_qt/util/spinbox.h"
 #include "citra_qt/util/util.h"
 #include "common/vector_math.h"
@@ -134,11 +134,6 @@ void GPUCommandListWidget::OnCommandDoubleClicked(const QModelIndex& index) {
         } else {
             UNREACHABLE_MSG("Unknown texture command");
         }
-
-        const auto texture = Pica::g_state.regs.GetTextures()[texture_index];
-        const auto config = texture.config;
-        const auto format = texture.format;
-        const auto info = Pica::DebugUtils::TextureInfo::FromPicaRegister(config, format);
 
         // TODO: Open a surface debugger
     }

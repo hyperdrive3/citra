@@ -4,6 +4,7 @@
 
 #include "common/logging/log.h"
 #include "core/hle/kernel/event.h"
+#include "core/hle/kernel/kernel.h"
 #include "core/hle/kernel/shared_memory.h"
 #include "core/hle/service/mic_u.h"
 
@@ -50,7 +51,7 @@ static bool audio_buffer_loop;
 static void MapSharedMem(Interface* self) {
     u32* cmd_buff = Kernel::GetCommandBuffer();
     u32 size = cmd_buff[1];
-    Handle mem_handle = cmd_buff[3];
+    Kernel::Handle mem_handle = cmd_buff[3];
     shared_memory = Kernel::g_handle_table.Get<Kernel::SharedMemory>(mem_handle);
     if (shared_memory) {
         shared_memory->name = "MIC_U:shared_memory";
@@ -98,7 +99,8 @@ static void StartSampling(Interface* self) {
     is_sampling = true;
     LOG_WARNING(Service_MIC, "(STUBBED) called, encoding=%u, sample_rate=%u, "
                              "audio_buffer_offset=%d, audio_buffer_size=%u, audio_buffer_loop=%u",
-                encoding, sample_rate, audio_buffer_offset, audio_buffer_size, audio_buffer_loop);
+                static_cast<u32>(encoding), static_cast<u32>(sample_rate), audio_buffer_offset,
+                audio_buffer_size, audio_buffer_loop);
 }
 
 /**
@@ -113,7 +115,7 @@ static void AdjustSampling(Interface* self) {
     u32* cmd_buff = Kernel::GetCommandBuffer();
     sample_rate = static_cast<SampleRate>(cmd_buff[1] & 0xFF);
     cmd_buff[1] = RESULT_SUCCESS.raw; // No error
-    LOG_WARNING(Service_MIC, "(STUBBED) called, sample_rate=%u", sample_rate);
+    LOG_WARNING(Service_MIC, "(STUBBED) called, sample_rate=%u", static_cast<u32>(sample_rate));
 }
 
 /**

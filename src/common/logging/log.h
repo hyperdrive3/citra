@@ -62,11 +62,13 @@ enum class Class : ClassType {
     Service_LDR,       ///< The LDR (3ds dll loader) service
     Service_MIC,       ///< The MIC (Microphone) service
     Service_NDM,       ///< The NDM (Network daemon manager) service
+    Service_NFC,       ///< The NFC service
     Service_NIM,       ///< The NIM (Network interface manager) service
     Service_NWM,       ///< The NWM (Network wlan manager) service
     Service_CAM,       ///< The CAM (Camera) service
     Service_CECD,      ///< The CECD (StreetPass) service
     Service_CFG,       ///< The CFG (Configuration) service
+    Service_CSND,      ///< The CSND (CWAV format process) service
     Service_DSP,       ///< The DSP (DSP control) service
     Service_DLP,       ///< The DLP (Download Play) service
     Service_HID,       ///< The HID (Human interface device) service

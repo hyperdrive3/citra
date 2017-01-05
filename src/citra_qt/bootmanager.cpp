@@ -9,20 +9,13 @@
 #endif
 
 #include "citra_qt/bootmanager.h"
-#include "common/key_map.h"
 #include "common/microprofile.h"
 #include "common/scm_rev.h"
 #include "common/string_util.h"
 #include "core/core.h"
-#include "core/settings.h"
-#include "core/system.h"
+#include "core/frontend/key_map.h"
 #include "video_core/debug_utils/debug_utils.h"
 #include "video_core/video_core.h"
-
-#define APP_NAME "citra"
-#define APP_VERSION "0.1-" VERSION
-#define APP_TITLE APP_NAME " " APP_VERSION
-#define COPYRIGHT "Copyright (C) 2013-2014 Citra Team"
 
 EmuThread::EmuThread(GRenderWindow* render_window)
     : exec_step(false), running(false), stop_run(false), render_window(render_window) {}
@@ -43,7 +36,7 @@ void EmuThread::run() {
             if (!was_active)
                 emit DebugModeLeft();
 
-            Core::RunLoop();
+            Core::System::GetInstance().RunLoop();
 
             was_active = running || exec_step;
             if (!was_active && !stop_run)
@@ -53,7 +46,7 @@ void EmuThread::run() {
                 emit DebugModeLeft();
 
             exec_step = false;
-            Core::SingleStep();
+            Core::System::GetInstance().SingleStep();
             emit DebugModeEntered();
             yieldCurrentThread();
 
@@ -65,7 +58,7 @@ void EmuThread::run() {
     }
 
     // Shutdown the core emulation
-    System::Shutdown();
+    Core::System::GetInstance().Shutdown();
 
 #if MICROPROFILE_ENABLED
     MicroProfileOnThreadExit();
@@ -106,7 +99,7 @@ private:
 };
 
 GRenderWindow::GRenderWindow(QWidget* parent, EmuThread* emu_thread)
-    : QWidget(parent), keyboard_id(0), emu_thread(emu_thread), child(nullptr) {
+    : QWidget(parent), child(nullptr), keyboard_id(0), emu_thread(emu_thread) {
 
     std::string window_title =
         Common::StringFromFormat("Citra | %s-%s", Common::g_scm_branch, Common::g_scm_desc);
