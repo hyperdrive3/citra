@@ -2,6 +2,7 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <algorithm>
 #include <cstring>
 #include <numeric>
 #include <type_traits>
@@ -15,9 +16,9 @@
 #include "common/vector_math.h"
 #include "core/core_timing.h"
 #include "core/hle/service/gsp_gpu.h"
-#include "core/hle/service/hid/hid.h"
 #include "core/hw/gpu.h"
 #include "core/hw/hw.h"
+#include "core/hw/y2r.h"
 #include "core/memory.h"
 #include "core/settings.h"
 #include "core/tracer/recorder.h"
@@ -33,7 +34,8 @@ namespace GPU {
 Regs g_regs;
 
 /// 268MHz CPU clocks / 60Hz frames per second
-const u64 frame_ticks = 268123480ull / 60;
+const u64 frame_ticks = BASE_CLOCK_RATE_ARM11 / 60;
+const u64 min_frame_ticks = BASE_CLOCK_RATE_ARM11 / 268;
 /// Event id for CoreTiming
 static int vblank_event;
 /// Total number of frames drawn
@@ -42,6 +44,10 @@ static u64 frame_count;
 static u32 time_point;
 /// Total delay caused by slow frames
 static float time_delay;
+
+/// Accumulated delay
+static double autoskip = 1;
+
 constexpr float FIXED_FRAME_TIME = 1000.0f / 60;
 // Max lag caused by slow frames. Can be adjusted to compensate for too many slow frames. Higher
 // values increases time needed to limit frame rate after spikes
@@ -535,11 +541,15 @@ static void FrameLimiter() {
 
     u32 frame_time = Common::Timer::GetTimeMs() - time_point;
 
+    autoskip = (frame_time / FIXED_FRAME_TIME) - autoskip + 1.0;
+    autoskip = MathUtil::Clamp(autoskip,0.1,12.0);
+
     time_delay -= frame_time;
 }
 
 /// Update hardware
 static void VBlankCallback(u64 userdata, int cycles_late) {
+
     frame_count++;
     VideoCore::g_renderer->SwapBuffers();
 
@@ -551,17 +561,21 @@ static void VBlankCallback(u64 userdata, int cycles_late) {
     Service::GSP::SignalInterrupt(Service::GSP::InterruptId::PDC0);
     Service::GSP::SignalInterrupt(Service::GSP::InterruptId::PDC1);
 
-    // Check for user input updates
-    Service::HID::Update();
-
     if (!Settings::values.use_vsync && Settings::values.toggle_framelimit) {
         FrameLimiter();
     }
 
     time_point = Common::Timer::GetTimeMs();
 
-    // Reschedule recurrent event
-    CoreTiming::ScheduleEvent(frame_ticks - cycles_late, vblank_event);
+    if (!HW::Y2R::Active()) {
+        const s64 ticks_tmp = (frame_ticks*autoskip - cycles_late);
+        u64 ticks = std::max<s64>(min_frame_ticks,ticks_tmp);
+        // Reschedule recurrent event
+        CoreTiming::ScheduleEvent(ticks, vblank_event);
+    } else {
+        HW::Y2R::GpuConsume();
+        CoreTiming::ScheduleEvent(frame_ticks, vblank_event);
+    }
 }
 
 /// Initialize hardware
@@ -595,6 +609,7 @@ void Init() {
     framebuffer_sub.active_fb = 0;
 
     frame_count = 0;
+    autoskip = 0.0;
     time_point = Common::Timer::GetTimeMs();
 
     vblank_event = CoreTiming::RegisterEvent("GPU::VBlankCallback", VBlankCallback);
